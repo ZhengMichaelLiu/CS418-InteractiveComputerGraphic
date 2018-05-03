@@ -1,0 +1,85 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head>
+<title>Particle System</title>
+<meta charset="utf-8"> 
+</head>
+
+    
+<script id="shader-phong-phong-vs" type="x-shader/x-vertex">
+    // This is the code from lab6
+    attribute vec3 aVertexNormal;
+    attribute vec3 aVertexPosition;
+    
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    
+    void main(void){
+        vec4 vertexPositionEye4 = uMVMatrix * vec4(aVertexPosition, 1.0);
+        vPosition = vertexPositionEye4.xyz / vertexPositionEye4.w;
+        vNormal = normalize(uNMatrix * aVertexNormal);
+        
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+    }
+</script>
+   
+<script id="shader-phong-phong-fs" type="x-shader/x-fragment">
+    // This is the code from lab6
+    precision mediump float;
+    
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    
+    uniform vec3 uLightPosition;
+    
+    uniform vec3 uAmbientLightColor;
+    uniform vec3 uDiffuseLightColor;
+    uniform vec3 uSpecularLightColor;
+    
+    uniform vec3 uAmbientMaterialColor;
+    uniform vec3 uDiffuseMaterialColor;
+    uniform vec3 uSpecularMaterialColor;
+    
+    uniform float uShininess;
+    
+    
+    void main(void){
+        vec3 vectorToLightSource = normalize(uLightPosition - vPosition);
+        float diffuseLightWeightning = max(dot(vNormal, vectorToLightSource), 0.0);
+        vec3 reflectionVector = normalize(reflect(-vectorToLightSource, vNormal));
+        vec3 viewVectorEye = -normalize(vPosition);
+        float rdotv = max(dot(reflectionVector, viewVectorEye), 0.0);
+
+        float specularLightWeightning = pow(rdotv, uShininess);
+        gl_FragColor = vec4(((uAmbientLightColor*uAmbientMaterialColor)
+                + (uDiffuseLightColor*uDiffuseMaterialColor) * diffuseLightWeightning
+                + (uSpecularLightColor*uSpecularMaterialColor) * specularLightWeightning),1.0);
+    
+    }
+    
+</script>
+<script src="gl-matrix-min.js"></script> 
+<script src="webgl-utils.js"></script>
+<script src="Particle_System.js"></script>  
+<script src="simpleModeling.js"></script>  
+
+  
+<body onload="startup();">
+    
+    <h1>Particle system</h1>
+    <p>Simulating the boucing particles in a box. The particles have gravity and friction, so they will lose energy gradually.</p>
+    <h3>Use Button Below to add or remove particles</h3>
+    <p>Click "Add particles" once to add 3 particles.</p>
+    <p>Click "Remove particles" to remove all of the particles in the scene.</p>
+    
+ <canvas id="myGLCanvas" width="800" height="800"></canvas>
+    <br>
+    <button onclick="addparticle()">Add more particles</button>
+    <br>
+    <button onclick="removeparticle()">Remove all particles</button>
+</body>
+
+</html>

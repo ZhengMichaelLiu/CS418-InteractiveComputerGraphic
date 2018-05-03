@@ -1,0 +1,166 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head>
+<title>MP3 </title>
+<meta charset="utf-8"> 
+</head>
+  <script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexNormal;
+    attribute vec3 aVertexPosition;
+    
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    uniform mat3 uNMatrix;
+    
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    
+    varying vec4 vVertexPosition;
+    
+    uniform int urotate_all;
+    uniform bool ucheckSky;
+    
+    varying vec3 R;
+    
+    void main(void){
+            if(ucheckSky){
+                vVertexPosition = vec4(aVertexPosition,1.0);
+                vec4 vertexPositionEye4 = uMVMatrix * vec4(aVertexPosition, 1.0);
+                vPosition = vertexPositionEye4.xyz / vertexPositionEye4.w;
+                vNormal = normalize(uNMatrix * aVertexNormal);
+        
+                gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+            }
+            else{
+            
+                vVertexPosition = vec4(aVertexPosition,1.0);
+                vec4 vertexPositionEye4 = uMVMatrix * vec4(aVertexPosition, 1.0);
+                vPosition = vertexPositionEye4.xyz / vertexPositionEye4.w;
+                vNormal = normalize(uNMatrix * aVertexNormal);
+        
+                gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+                vec4 eyePos  = uMVMatrix * vec4(aVertexPosition, 1.0);
+                vec4 N = uMVMatrix * vec4(aVertexNormal, 1.0);
+                if(urotate_all == 1){
+                    R = reflect(eyePos.xyz, N.xyz);
+                    R = (uMVMatrix * vec4(R, 1.0)).xyz;
+                    
+                }
+                else{
+                    R = reflect(eyePos.xyz, N.xyz); 
+                }
+                
+            }
+        
+    }
+</script>
+  
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+    
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    
+    uniform vec3 uLightPosition;
+    
+    uniform vec3 uAmbientLightColor;
+    uniform vec3 uDiffuseLightColor;
+    uniform vec3 uSpecularLightColor;
+    
+    uniform vec3 uKAmbient;
+    uniform vec3 uKDiffuse;
+    uniform vec3 uKSpecular;
+    uniform float uShininess;
+    
+    varying vec4 vVertexPosition;
+    
+    uniform samplerCube uSkyboxSampler;
+	uniform bool ucheckSky;
+    
+    uniform int ureflective_checked;
+    
+    varying vec3 R;
+    
+    void main(void){
+        if(ureflective_checked == 0){
+            if (ucheckSky){
+                vec4 color = textureCube(uSkyboxSampler,normalize(vVertexPosition).xyz);
+                gl_FragColor = vec4(color.xyz, 1.0);
+		      }
+            else{
+                vec3 vectorToLightSource = normalize(uLightPosition - vPosition);
+        
+                float diffuseLightWeightning = max(dot(vNormal, vectorToLightSource), 0.0);
+        
+                vec3 viewVectorEye = -normalize(vPosition);
+        
+                vec3 halfVector = normalize(vectorToLightSource + viewVectorEye);
+
+                float rdotv = max(dot(halfVector, vNormal), 0.0);
+        
+                float specularLightWeightning = pow(rdotv, uShininess);
+        
+                gl_FragColor = vec4((
+                  (uAmbientLightColor * uKAmbient)
+                + (uDiffuseLightColor * uKDiffuse) * diffuseLightWeightning
+                + (uSpecularLightColor * uKSpecular) * specularLightWeightning),1.0);
+            }
+        }
+        else if(ureflective_checked == 1){
+            if (ucheckSky){
+                vec4 color = textureCube(uSkyboxSampler,normalize(vVertexPosition).xyz);
+                gl_FragColor = vec4(color.xyz, 1.0);
+		      }
+            else{
+                vec4 texColor = textureCube(uSkyboxSampler, R);
+                gl_FragColor = texColor;
+
+            }
+        }
+        
+
+ }
+</script>
+
+<script src="gl-matrix-min.js"></script> 
+<script src="webgl-utils.js"></script> 
+<script src="TriMesh.js"></script>  
+<script src="teapot.js"></script>   
+<body onload="startup();">
+    <h1>Please use Key 'A' and Key 'D' to orbit around the teapot</h1>
+    <h1>The form below is given in the lab, don't care about it.</h1>
+    <form id="reflection_form">
+        <fieldset>
+            <legend>Reflection setting</legend>
+            <input type="radio" name="primitive" id="reflective" value="reflective"> Reflection
+            <input type="radio" name="primitive" id="no_reflective" id="no_reflective" value="polygon" checked> No Reflection
+        </fieldset>
+    </form>
+    <form id="rotation_form">
+        <fieldset>
+            <legend>Rotation setting</legend>
+            <input type="radio" name="primitive" id="teapot_rotation" value="teapot_rotation"> Rotate the teapot itself.
+            <input type="radio" name="primitive" id="all_rotation" value="all_rotation" checked> Orbit around the teapot.
+        </fieldset>
+    </form>
+     <h1>The form below is given in the lab, don't care about it.</h1>
+ <canvas id="myGLCanvas" width="800" height="800"></canvas>
+    
+    
+    <form id="input_form">
+        <fieldset>
+            <legend>Rendering Parameters</legend>
+         <input type="radio" name="primitive" id="wireframe" value="wireframe"> Wireframe
+         <input type="radio" name="primitive" id="polygon" id="polygon" value="polygon" checked> Polygon
+         <input type="radio" name="primitive" id="wirepoly" value="wirepoly" > Polygon with Edges  
+        </fieldset>
+        <fieldset>
+            <legend>Mesh Pose and Camera Position</legend>
+         <emph>Euler Y:</emph> <input type="number" id="eY" value="0"> Keys A and D <br><br>
+         <emph>Eye Z position:</emph> <input type="number" id="eZ" value="0" > Keys ArrowUp and ArrowDown   
+        </fieldset>
+        </form>
+    
+</body>
+
+</html>
